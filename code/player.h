@@ -137,7 +137,32 @@ void bfs1(struct Player *player,int x,int y){
         
 }
 
-
+int dfs1(struct Player *player,int x,int y,int num,int sum){
+    if(sum>0){
+        return num;
+    }
+    if(num==20){
+        return sum;
+    }
+    int max=10000;
+    for(int i=0;i<4;i++){
+            int posx=x+dx[i];
+            int posy=y+dy[i];
+            if(check(player,posx,posy)==1){
+                char tmp1=player->mat[posx][posy];
+                if(player->mat[posx][posy]=='o'||player->mat[posx][posy]=='O'){
+                    sum=sum+10;
+                    player->mat[posx][posy]=='.';
+                }
+                int maxtmp=dfs1(player,posx,posy,num+1,sum);
+                if(maxtmp<max&&maxtmp!=0){
+                    max=maxtmp;
+                }
+                player->mat[posx][posy]=tmp1;
+            }
+        }
+        return max;
+}
 
 void init(struct Player *player) {
 	// This function will be executed at the begin of each game, only once.
@@ -215,9 +240,34 @@ struct Point walk(struct Player *player) {
         path[step][1]=dy[nextpath];
         return ret;
     }
-    else{
-        if(check(player,player->your_posx,player->your_posy+1)==1)
-        ret.Y=player->your_posy+1;
-        return ret; 
+    else{   
+            max=10000;
+            for(int i=0;i<4;i++){
+            int posx=player->your_posx+dx[i];
+            int posy=player->your_posy+dy[i];
+            if(check(player,posx,posy)){
+                    ret.X=posx;
+                    ret.Y=posy;
+                    int maxtmp=dfs1(player,posx,posy,0,0);
+                    if(maxtmp<max){
+                        max=maxtmp;
+                        flag=1;
+                        nextpath=i;
+                    }
+                }  
+            }
+        if(flag==1){
+        ret.X=player->your_posx+dx[nextpath];
+        ret.Y=player->your_posy+dy[nextpath];
+        step++;
+        path[step][0]=dx[nextpath];
+        path[step][1]=dy[nextpath];
+        return ret;
     }
+    }
+    
+    if(check(player,player->your_posx,player->your_posy+1)==1)
+    ret.Y=player->your_posy+1;
+    return ret; 
+    
 }
