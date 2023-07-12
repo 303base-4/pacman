@@ -1,11 +1,3 @@
-/**
- * @file computer.hpp
- * @author zhengaohong@jisuanke.com
- * @copyright jisuanke.com
- * @version 0.0
- * @date 2016-08-01
- */
-
 #include <math.h>
 #include <stdlib.h>
 #include "../include/playerbase.h"
