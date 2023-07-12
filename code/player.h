@@ -48,10 +48,16 @@ static void bfs(Player *player, int step[100][100])
     std::queue<qNode> q;
     q.push({player->ghost_posx[0], player->ghost_posy[0], 0});
     q.push({player->ghost_posx[1], player->ghost_posy[1], 0});
+    if(player->opponent_status>=1){
+        q.push({player->opponent_posx, player->opponent_posy, 0});
+    }
     bool flag[61][61];
     memset(flag, false, sizeof(flag));
     flag[player->ghost_posx[0]][player->ghost_posy[0]] = true;
     flag[player->ghost_posx[1]][player->ghost_posy[1]] = true;
+    if(player->opponent_status>=1){
+        flag[player->opponent_posx][player->opponent_posy] = true;
+    }
     while (!q.empty())
     {
         qNode tmp = q.front();
@@ -151,7 +157,12 @@ int dfs1(struct Player *player,int x,int y,int num,int sum){
             if(check(player,posx,posy)==1){
                 char tmp1=player->mat[posx][posy];
                 if(player->mat[posx][posy]=='o'||player->mat[posx][posy]=='O'){
-                    sum=sum+10;
+                    if(player->mat[posx][posy]=='o'){
+                        sum=sum+10;
+                    }                    
+                    else if(player->mat[posx][posy]=='O'){
+                        sum=sum+5000;
+                    }
                     player->mat[posx][posy]=='.';
                 }
                 int maxtmp=dfs1(player,posx,posy,num+1,sum);
@@ -170,7 +181,7 @@ void init(struct Player *player) {
 
 int dfs(struct Player *player,int x,int y,int num,int sum){
     int max=0;
-    if(num==3){
+    if(num==6){
         return sum;
     }
     else{
@@ -180,7 +191,12 @@ int dfs(struct Player *player,int x,int y,int num,int sum){
             if(check(player,posx,posy)==1){
                 char tmp1=player->mat[posx][posy];
                 if(player->mat[posx][posy]=='o'||player->mat[posx][posy]=='O'){
-                    sum=sum+10;
+                    if(player->mat[posx][posy]=='o'){
+                        sum=sum+10;
+                    }                    
+                    else if(player->mat[posx][posy]=='O'){
+                        sum=sum+500;
+                    }
                     player->mat[posx][posy]=='.';
                 }
                 int maxtmp=dfs(player,posx,posy,num+1,sum);
@@ -266,8 +282,18 @@ struct Point walk(struct Player *player) {
     }
     }
     
-    if(check(player,player->your_posx,player->your_posy+1)==1)
-    ret.Y=player->your_posy+1;
-    return ret; 
+     for(int i=0;i<4;i++){
+        int posx=player->your_posx+dx[i];
+        int posy=player->your_posy+dy[i];
+        if(check(player,posx,posy)){
+                ret.X=posx;
+                ret.Y=posy;
+                step++;
+                path[step][0]=dx[i];
+                path[step][1]=dy[i];
+                return ret;
+            }
+        }      
     
 }
+
