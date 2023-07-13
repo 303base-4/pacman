@@ -10,13 +10,21 @@ static int choice[MAXN][MAXN];
 static int ghostx[2], ghosty[2];
 static int ed[MAXN][MAXN];
 static bool walked[MAXN][MAXN];
+static int run_x, run_y;
 
 struct qNode
 {
     Point pos;
     int step;
 };
-
+static int intmin(int a, int b)
+{
+    return a < b ? a : b;
+}
+static int intmax(int a, int b)
+{
+    return a > b ? a : b;
+}
 static bool check(Point pos, Player *player)
 {
     int x1 = pos.X, y1 = pos.Y;
@@ -289,11 +297,84 @@ static bool unsafe(Player *now)
     {
         memset(ed, 0x3f3f3f3f, sizeof(ed));
         enemy_dist(now, ed);
-        if (ed[now->your_posx][now->your_posy] <= run[now->your_posx][now->your_posy] * 2 + 1)
+        int maxd = -1, mini = -1;
+        for (int i = 0; i < 4; i++)
+        {
+            Point next = {now->your_posx + MOV[i].X, now->your_posy + MOV[i].Y};
+            if (!check(next, now))
+                continue;
+            if (ed[next.X][next.Y] > maxd)
+            {
+                maxd = ed[next.X][next.Y];
+                mini = i;
+            }
+        }
+        if (maxd > ed[now->your_posx][now->your_posy])
+        {
+            run_x = now->your_posx + MOV[mini].X, run_y = now->your_posy + MOV[mini].Y;
+        }
+        else
+        {
+            run_x = now->your_posx, run_y = now->your_posy;
+        }
+        struct qNode
+        {
+            Point pos;
+            int step;
+            int direction;
+            int mind;
+        };
+        std::queue<qNode> q;
+        bool flag[MAXN][MAXN];
+        memset(flag, false, sizeof(flag));
+        q.push({now->your_posx, now->your_posy, 0, -1, ed[now->your_posx][now->your_posy]});
+        flag[now->your_posx][now->your_posy] = true;
+        int mind = 0, ndx = 3;
+        while (!q.empty())
+        {
+            qNode tmp = q.front();
+            for (int i = 0; i < 4; i++)
+            {
+                qNode next = tmp;
+                next.pos.X += MOV[i].X, next.pos.Y += MOV[i].Y;
+                next.step++;
+                if (next.direction == -1)
+                    next.direction = i;
+                next.mind = intmin(next.mind, ed[next.pos.X][next.pos.Y] - next.step);
+                if (check(next.pos, now) && ed[next.pos.X][next.pos.Y] > next.step && !flag[next.pos.X][next.pos.Y])
+                {
+                    if (choice[next.pos.X][next.pos.Y] >= ndx && next.step < ed[next.pos.X][next.pos.Y])
+                    {
+                        if (choice[next.pos.X][next.pos.Y] > ndx)
+                        {
+                            ndx = choice[next.pos.X][next.pos.Y];
+                            mind = next.mind;
+                        }
+                        if (next.mind >= mind)
+                        {
+                            mind = next.mind;
+                            run_x = now->your_posx + MOV[next.direction].X;
+                            run_y = now->your_posy + MOV[next.direction].Y;
+                        }
+                    }
+                    if (now->mat[next.pos.X][next.pos.Y] == 'O' && ed[next.pos.X][next.pos.Y] < 19)
+                    {
+                        run_x = now->your_posx + MOV[next.direction].X;
+                        run_y = now->your_posy + MOV[next.direction].Y;
+                        return true;
+                    }
+                    q.push(next);
+                    flag[next.pos.X][next.pos.Y] = true;
+                }
+            }
+            q.pop();
+        }
+        if (mind <= 2)
             return true;
     }
     return false;
 }
+/*
 static Point run_away(Player *now)
 {
     struct qNode
@@ -307,7 +388,7 @@ static Point run_away(Player *now)
     memset(flag, false, sizeof(flag));
     q.push({now->your_posx, now->your_posy, 0, -1});
     flag[now->your_posx][now->your_posy] = true;
-    int nd = -1, ndx = 3;
+    int nd = -1, ndx = 3, mind = 0;
     while (!q.empty())
     {
         qNode tmp = q.front();
@@ -324,7 +405,11 @@ static Point run_away(Player *now)
                 if (choice[next.pos.X][next.pos.Y] >= ndx && next.step < ed[next.pos.X][next.pos.Y])
                 {
                     ndx = choice[next.pos.X][next.pos.Y];
-                    nd = next.direction;
+                    if (ed[next.pos.X][next.pos.Y] - next.step >= mind)
+                    {
+                        mind = ed[next.pos.X][next.pos.Y] - next.step;
+                        nd = next.direction;
+                    }
                 }
                 if (now->mat[next.pos.X][next.pos.Y] == 'O' && ed[next.pos.X][next.pos.Y] < 19)
                 {
@@ -360,6 +445,7 @@ static Point run_away(Player *now)
         return {now->your_posx, now->your_posy};
     }
 }
+*/
 static Point hunt(Player *now)
 {
     int mind = 0x3f3f3f3f, mini = -1;
@@ -481,7 +567,7 @@ struct Point walk(struct Player *player)
         }
         else
         {
-            ret = run_away(start);
+            ret = {run_x, run_y};
         }
     }
     else
