@@ -61,7 +61,7 @@ static void bfs(Player *player, int step[100][100])
 		for (int i = 0; i < 4; i++) {
 			int x1 = tmp.x + MOV[i].X, y1 = tmp.y + MOV[i].Y;
 			if (check({x1, y1}, player) && !flag[x1][y1]) {
-				if (tmp.step + 1 <= 5)
+				if (tmp.step + 1 <= 15)
 					q.push({x1, y1, tmp.step + 1});
 				flag[x1][y1] = true;
 				step[x1][y1] = tmp.step + 1;
@@ -185,15 +185,33 @@ struct Point walk(struct Player *player)
 {
 	// This function will be executed in each round.
 	struct Point ret = {player->your_posx, player->your_posy};
-	player->mat[1][4]='#';
-	player->mat[1][10]='#';
-	player->mat[11][4]='#';
-	for(int i=0; i<100; i++) {
+    for(int i=0; i<100; i++) {
 		for(int j=0; j<100; j++) {
 			length[i][j]=190000;
 		}
 	}
-	bfs(player,length);
+    bfs(player,length);
+    if(player->your_status>0){
+        int min=1000;int nextp=0;
+        for(int t=0;t<4;t++){
+				int posx=player->your_posx+dx[t];
+				int posy=player->your_posy+dy[t];
+				if(check(player,posx,posy)){
+					if(length[posx][posy]<min){
+                        min=length[posx][posy];
+                        nextp=t;
+					}
+				}      
+		}
+        if(min!=1000){
+            ret.X=player->your_posx+dx[nextp];
+		    ret.Y=player->your_posy+dy[nextp];
+            return ret;
+        }
+    }
+	player->mat[1][4]='#';
+	player->mat[1][10]='#';
+	player->mat[11][4]='#';
 	int flag=0,max=0,nextpath=0;
 	for(int i=0; i<4; i++) {
 		int posx=player->your_posx+dx[i];
