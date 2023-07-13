@@ -376,6 +376,7 @@ static Point hunt(Player *now)
     }
     return {now->your_posx + MOV[mini].X, now->your_posy + MOV[mini].Y};
 }
+/*
 static struct Point get_star(struct Player *start)
 {
     struct Point ret = {start->your_posx, start->your_posy};
@@ -414,6 +415,53 @@ static struct Point get_star(struct Player *start)
     walked[x1][y1] = true;
     ret = {start->your_posx + MOV[maxi].X, start->your_posy + MOV[maxi].Y};
     return ret;
+}
+*/
+static Point get_star(Player *now)
+{
+    struct qNode
+    {
+        Point pos;
+        int step;
+        int direction;
+    };
+    std::queue<qNode> q;
+    bool flag[MAXN][MAXN];
+    memset(flag, false, sizeof(flag));
+    q.push({now->your_posx, now->your_posy, 0, -1});
+    flag[now->your_posx][now->your_posy] = true;
+    int maxc = 0, maxd = -1;
+    for (int i = 0; maxd == -1; i++)
+    {
+        while (q.front().step == i)
+        {
+            qNode tmp = q.front();
+            q.pop();
+            for (int j = 0; j < 4; j++)
+            {
+                qNode next = tmp;
+                next.pos.X += MOV[j].X, next.pos.Y += MOV[j].Y;
+                if (next.direction == -1)
+                    next.direction = j;
+                next.step++;
+                if (!check({next.pos.X, next.pos.Y}, now) || flag[next.pos.X][next.pos.Y])
+                    continue;
+                Player ptmp = *now;
+                ptmp.your_posx = next.pos.X, ptmp.your_posy = next.pos.Y;
+                if (calcscore(&ptmp) > 0)
+                {
+                    if (choice[next.pos.X][next.pos.Y] > maxc)
+                    {
+                        maxc = choice[next.pos.X][next.pos.Y];
+                        maxd = next.direction;
+                    }
+                }
+                q.push(next);
+                flag[next.pos.X][next.pos.Y] = true;
+            }
+        }
+    }
+    return {now->your_posx + MOV[maxd].X, now->your_posy + MOV[maxd].Y};
 }
 struct Point walk(struct Player *player)
 {
