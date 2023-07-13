@@ -446,7 +446,7 @@ struct Point walk(struct Player *player)
         memset(ed, 0x3f3f3f3f, sizeof(ed));
         enemy_dist(start, ed);
         start->opponent_status = ostmp;
-        if (ed[start->your_posx][start->your_posy] < start->your_status)
+        if (ed[start->your_posx][start->your_posy] < start->your_status - 1)
         {
             ret = hunt(start);
         }
