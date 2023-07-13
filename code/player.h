@@ -4,13 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 static const int MAXN = 61;
-static const Point MOV[4] = {{-1, 0}, {1, 0}, {0, 1}, {0, -1}};
+static const Point MOV[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
 static const int DEPTH = 5;
 static int run[MAXN][MAXN];
 static int choice[MAXN][MAXN];
 static int ghostx[2], ghosty[2];
 static int ed[MAXN][MAXN];
 static bool walked[MAXN][MAXN];
+
+struct qNode
+{
+    Point pos;
+    int step;
+};
+
 static bool check(Point pos, Player *player)
 {
     int x1 = pos.X, y1 = pos.Y;
@@ -19,6 +26,7 @@ static bool check(Point pos, Player *player)
     else
         return false;
 }
+
 static int init_run(Point pos, Player *player, int choice[MAXN][MAXN])
 {
     struct qNode
@@ -40,7 +48,7 @@ static int init_run(Point pos, Player *player, int choice[MAXN][MAXN])
             int x1 = tmp.x + MOV[i].X, y1 = tmp.y + MOV[i].Y;
             if (check({x1, y1}, player) && !flag[x1][y1])
             {
-                if (choice[x1][y1] >= 3 || player->mat[x1][y1] == 'O')
+                if (choice[x1][y1] >= 4)
                     return tmp.step + 1;
                 q.push({x1, y1, tmp.step + 1});
                 flag[x1][y1] = true;
@@ -58,6 +66,8 @@ void init(struct Player *player)
     {
         for (int j = 0; j < player->col_cnt; j++)
         {
+            if (!check({i, j}, player))
+                continue;
             for (int k = 0; k < 4; k++)
             {
                 int x1 = i + MOV[k].X, y1 = j + MOV[k].Y;
@@ -68,12 +78,31 @@ void init(struct Player *player)
             }
         }
     }
+    int choice_tmp[MAXN][MAXN];
+    memcpy(choice_tmp, choice, sizeof(choice_tmp));
     for (int i = 0; i < player->row_cnt; i++)
     {
         for (int j = 0; j < player->col_cnt; j++)
         {
-            if (choice[i][j] >= 3)
-                run[i][j] = 1;
+            if (!check({i, j}, player) || choice_tmp[i][j] >= 3)
+                continue;
+            for (int k = 0; k < 4; k++)
+            {
+                int x1 = i + MOV[k].X, y1 = j + MOV[k].Y;
+                if (!check({x1, y1}, player) || choice_tmp[x1][y1] < 3)
+                    continue;
+                choice[x1][y1]--;
+            }
+        }
+    }
+    for (int i = 0; i < player->row_cnt; i++)
+    {
+        for (int j = 0; j < player->col_cnt; j++)
+        {
+            if (!check({i, j}, player))
+                continue;
+            if (choice[i][j] >= 4)
+                run[i][j] = 0;
             else
                 run[i][j] = init_run({i, j}, player, choice);
         }
@@ -82,6 +111,82 @@ void init(struct Player *player)
     ghostx[1] = player->ghost_posx[1];
     ghosty[0] = player->ghost_posy[0];
     ghosty[1] = player->ghost_posy[1];
+}
+static void update_run(Player *player)
+{
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            int x1 = player->ghost_posx[i] + MOV[j].X, y1 = player->ghost_posy[i] + MOV[j].Y;
+            if (player->ghost_posx[1] == player->ghost_posx[0] && player->ghost_posy[1] == player->ghost_posy[0] &&
+                i == 1)
+                break;
+            if (!check({x1, y1}, player))
+                continue;
+            else
+            {
+                choice[x1][y1]--;
+            }
+        }
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            int x1 = player->ghost_posx[i] + MOV[j].X, y1 = player->ghost_posy[i] + MOV[j].Y;
+            if (player->ghost_posx[1] == player->ghost_posx[0] && player->ghost_posy[1] == player->ghost_posy[0] &&
+                i == 1)
+                break;
+            if (!check({x1, y1}, player))
+                continue;
+            else
+            {
+                if (choice[x1][y1] <= 3)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int x2 = x1 + MOV[k].X, y2 = y1 + MOV[k].Y;
+                        if (!check({x2, y2}, player))
+                            continue;
+                        run[x2][y2] = init_run({x2, y2}, player, choice);
+                    }
+                }
+            }
+        }
+    }
+    if (player->opponent_status > 0)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            int x1 = player->opponent_posx + MOV[j].X, y1 = player->opponent_posy + MOV[j].Y;
+            if (!check({x1, y1}, player))
+                continue;
+            else
+            {
+                choice[x1][y1]--;
+            }
+        }
+        for (int j = 0; j < 4; j++)
+        {
+            int x1 = player->opponent_posx + MOV[j].X, y1 = player->opponent_posy + MOV[j].Y;
+            if (!check({x1, y1}, player))
+                continue;
+            else
+            {
+                if (choice[x1][y1] <= 3)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int x2 = x1 + MOV[k].X, y2 = y1 + MOV[k].Y;
+                        if (!check({x2, y2}, player))
+                            continue;
+                        run[x2][y2] = init_run({x2, y2}, player, choice);
+                    }
+                }
+            }
+        }
+    }
 }
 static void enemy_dist(Player *player, int step[MAXN][MAXN])
 {
@@ -203,6 +308,7 @@ static Point run_away(Player *now)
     memset(flag, false, sizeof(flag));
     q.push({now->your_posx, now->your_posy, 0, -1});
     flag[now->your_posx][now->your_posy] = true;
+    int nd = -1, ndx = 3;
     while (!q.empty())
     {
         qNode tmp = q.front();
@@ -214,26 +320,46 @@ static Point run_away(Player *now)
             next.step++;
             if (next.direction == -1)
                 next.direction = i;
-            if (check(next.pos, now) && ed[next.pos.X][next.pos.Y] > 0 && !flag[next.pos.X][next.pos.Y])
+            if (check(next.pos, now) && ed[next.pos.X][next.pos.Y] > next.step && !flag[next.pos.X][next.pos.Y])
             {
-                if (choice[next.pos.X][next.pos.Y] >= 3 && next.step < ed[next.pos.X][next.pos.Y])
+                if (choice[next.pos.X][next.pos.Y] >= ndx && next.step < ed[next.pos.X][next.pos.Y])
+                {
+                    ndx = choice[next.pos.X][next.pos.Y];
+                    nd = next.direction;
+                }
+                if (now->mat[next.pos.X][next.pos.Y] == 'O' && ed[next.pos.X][next.pos.Y] < 19)
+                {
                     return {now->your_posx + MOV[next.direction].X, now->your_posy + MOV[next.direction].Y};
+                }
                 q.push(next);
                 flag[next.pos.X][next.pos.Y] = true;
             }
         }
     }
-    int mind = 0x3f3f3f3f, mini = -1;
+    if (nd != -1)
+    {
+        return {now->your_posx + MOV[nd].X, now->your_posy + MOV[nd].Y};
+    }
+    int maxd = -1, mini = -1;
     for (int i = 0; i < 4; i++)
     {
         Point next = {now->your_posx + MOV[i].X, now->your_posy + MOV[i].Y};
-        if (ed[next.X][next.Y] < mind)
+        if (!check(next, now))
+            continue;
+        if (ed[next.X][next.Y] > maxd)
         {
-            mind = ed[next.X][next.Y];
+            maxd = ed[next.X][next.Y];
             mini = i;
         }
     }
-    return {now->your_posx + MOV[mini].X, now->your_posy + MOV[mini].Y};
+    if (maxd > ed[now->your_posx][now->your_posy])
+    {
+        return {now->your_posx + MOV[mini].X, now->your_posy + MOV[mini].Y};
+    }
+    else
+    {
+        return {now->your_posx, now->your_posy};
+    }
 }
 static Point hunt(Player *now)
 {
@@ -241,6 +367,8 @@ static Point hunt(Player *now)
     for (int i = 0; i < 4; i++)
     {
         Point next = {now->your_posx + MOV[i].X, now->your_posy + MOV[i].Y};
+        if (!check(next, now))
+            continue;
         if (ed[next.X][next.Y] < mind)
         {
             mind = ed[next.X][next.Y];
@@ -258,6 +386,8 @@ static struct Point get_star(struct Player *start)
         Player tmp = *start;
         tmp.your_posx += MOV[i].X;
         tmp.your_posy += MOV[i].Y;
+        if (!check({tmp.your_posx, tmp.your_posy}, start))
+            continue;
         int h = calcscore(&tmp) + choice[tmp.your_posx][tmp.your_posy];
         if (h > maxx)
         {
@@ -292,6 +422,10 @@ struct Point walk(struct Player *player)
     struct Point ret = {player->your_posx, player->your_posy};
     Player *start = (Player *)malloc(sizeof(Player));
     *start = *player;
+    int choice_tmp[MAXN][MAXN], run_tmp[MAXN][MAXN];
+    memcpy(choice_tmp, choice, sizeof(choice_tmp));
+    memcpy(run_tmp, run, sizeof(run_tmp));
+    update_run(start);
     if (start->your_status == 0)
     {
         if (!unsafe(start))
@@ -319,6 +453,8 @@ struct Point walk(struct Player *player)
             ret = get_star(start);
         }
     }
+    memcpy(choice, choice_tmp, sizeof(choice));
+    memcpy(run, run_tmp, sizeof(run));
     free(start);
     return ret;
 }
