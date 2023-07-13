@@ -5,7 +5,6 @@
 #include <string.h>
 static const int MAXN = 61;
 static const Point MOV[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
-static const int DEPTH = 5;
 static int run[MAXN][MAXN];
 static int choice[MAXN][MAXN];
 static int ghostx[2], ghosty[2];
@@ -440,7 +439,10 @@ struct Point walk(struct Player *player)
     else
     {
         int ostmp = start->opponent_status;
-        start->opponent_status = 0;
+        if (start->opponent_status == 0)
+            start->opponent_status = 1;
+        else
+            start->opponent_status = 0;
         memset(ed, 0x3f3f3f3f, sizeof(ed));
         enemy_dist(start, ed);
         start->opponent_status = ostmp;
