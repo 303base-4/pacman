@@ -5,12 +5,11 @@
 #include <string.h>
 static const int MAXN = 61;
 static const Point MOV[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
-static int run[MAXN][MAXN];
-static int choice[MAXN][MAXN];
-static int ghostx[2], ghosty[2];
-static int ed[MAXN][MAXN];
-static bool walked[MAXN][MAXN];
-static int run_x, run_y;
+static int run[MAXN][MAXN];      // 逃跑距离
+static int choice[MAXN][MAXN];   // 可选方向数
+static int ghostx[2], ghosty[2]; // 幽灵的初始位置
+static int ed[MAXN][MAXN];       // 敌人的距离
+static int run_x, run_y;         // 逃跑方向
 
 struct qNode
 {
@@ -25,7 +24,7 @@ static int intmax(int a, int b)
 {
     return a > b ? a : b;
 }
-static bool check(Point pos, Player *player)
+static bool check(Point pos, Player *player) // 检查位置pos是否合法
 {
     int x1 = pos.X, y1 = pos.Y;
     if (x1 >= 0 && x1 < player->row_cnt && y1 >= 0 && y1 < player->col_cnt && player->mat[x1][y1] != '#')
@@ -35,6 +34,8 @@ static bool check(Point pos, Player *player)
 }
 
 static int init_run(Point pos, Player *player, int choice[MAXN][MAXN])
+// 计算某个位置的逃跑距离。逃跑距离是指该位置到安全区（四个方向都可以走的点）的最短路径长度
+// 采用广度优先搜索
 {
     struct qNode
     {
@@ -65,10 +66,10 @@ static int init_run(Point pos, Player *player, int choice[MAXN][MAXN])
     return 0x3f3f3f3f;
 }
 
-void init(struct Player *player)
+void init(struct Player *player) // 初始化，包括一个点可走方向数的计算、逃跑距离的计算
 {
     // This function will be executed at the begin of each game, only once.
-    memset(walked, false, sizeof(walked));
+    // 计算每个点可以走的方向数
     for (int i = 0; i < player->row_cnt; i++)
     {
         for (int j = 0; j < player->col_cnt; j++)
@@ -85,6 +86,7 @@ void init(struct Player *player)
             }
         }
     }
+    // 可选方向数小于2的点往往是死角或者死胡同入口，不是可选方向。所以将这些点周围点的可选方向-1.
     int choice_tmp[MAXN][MAXN];
     memcpy(choice_tmp, choice, sizeof(choice_tmp));
     for (int i = 0; i < player->row_cnt; i++)
@@ -102,6 +104,7 @@ void init(struct Player *player)
             }
         }
     }
+    // 初始化每个点的逃跑距离
     for (int i = 0; i < player->row_cnt; i++)
     {
         for (int j = 0; j < player->col_cnt; j++)
@@ -114,13 +117,16 @@ void init(struct Player *player)
                 run[i][j] = init_run({i, j}, player, choice);
         }
     }
+    // 记录幽灵的初始位置，方便吃幽灵后的计算
     ghostx[0] = player->ghost_posx[0];
     ghostx[1] = player->ghost_posx[1];
     ghosty[0] = player->ghost_posy[0];
     ghosty[1] = player->ghost_posy[1];
 }
 static void update_run(Player *player)
+// 更新逃跑距离。如果敌人到达了安全区或安全区附近，那么该安全区不再安全，与此安全区有关的逃跑距离需要更新
 {
+    // 更新敌人附近点的可选方向数
     for (int i = 0; i < 2; i++)
     {
         for (int j = 0; j < 4; j++)
@@ -195,7 +201,7 @@ static void update_run(Player *player)
         }
     }
 }
-static void enemy_dist(Player *player, int step[MAXN][MAXN])
+static void enemy_dist(Player *player, int step[MAXN][MAXN]) // 计算地图上所有点到离它最近的敌人的最短距离
 {
     struct qNode
     {
@@ -234,7 +240,7 @@ static void enemy_dist(Player *player, int step[MAXN][MAXN])
     }
 }
 
-static int calcscore(Player *tmp)
+static int calcscore(Player *tmp) // 计算tmp中玩家位置的分数
 {
     int score = 0;
     if (tmp->mat[tmp->your_posx][tmp->your_posy] == 'o' || tmp->mat[tmp->your_posx][tmp->your_posy] == 'O')
@@ -258,7 +264,7 @@ static int calcscore(Player *tmp)
     }
     return score;
 }
-static bool unsafe(Player *now)
+static bool unsafe(Player *now) // 判断敌人是否接近
 {
     int run_dist = run[now->your_posx][now->your_posy];
     if (abs(now->ghost_posx[0] - now->your_posx) + abs(now->ghost_posy[0] - now->your_posy) <= run_dist * 2 + 1 ||
@@ -346,7 +352,7 @@ static bool unsafe(Player *now)
     return false;
 }
 
-static Point hunt(Player *now)
+static Point hunt(Player *now) // 在拿到超级星状态下，追击离自己最近的敌人
 {
     int mind = 0x3f3f3f3f, mini = -1;
     for (int i = 0; i < 4; i++)
@@ -363,7 +369,7 @@ static Point hunt(Player *now)
     return {now->your_posx + MOV[mini].X, now->your_posy + MOV[mini].Y};
 }
 
-static Point get_star(Player *now)
+static Point get_star(Player *now) // 广度优先搜索找到最近的一颗星拿分
 {
     struct qNode
     {
@@ -409,7 +415,7 @@ static Point get_star(Player *now)
     }
     return {now->your_posx + MOV[maxd].X, now->your_posy + MOV[maxd].Y};
 }
-struct Point walk(struct Player *player)
+struct Point walk(struct Player *player) // 操作函数
 {
     // This function will be executed in each round.
     struct Point ret = {player->your_posx, player->your_posy};
