@@ -11,11 +11,6 @@ static int ghostx[2], ghosty[2]; // 幽灵的初始位置
 static int ed[MAXN][MAXN];       // 敌人的距离
 static int run_x, run_y;         // 逃跑方向
 
-struct qNode
-{
-    Point pos;
-    int step;
-};
 static int intmin(int a, int b)
 {
     return a < b ? a : b;
@@ -203,6 +198,7 @@ static void update_run(Player *player)
 }
 static void enemy_dist(Player *player, int step[MAXN][MAXN]) // 计算地图上所有点到离它最近的敌人的最短距离
 {
+    // 广度优先搜索
     struct qNode
     {
         int x, y;
@@ -267,11 +263,13 @@ static int calcscore(Player *tmp) // 计算tmp中玩家位置的分数
 static bool unsafe(Player *now) // 判断敌人是否接近
 {
     int run_dist = run[now->your_posx][now->your_posy];
+    // 先用曼哈顿距离简单判断
     if (abs(now->ghost_posx[0] - now->your_posx) + abs(now->ghost_posy[0] - now->your_posy) <= run_dist * 2 + 1 ||
         abs(now->ghost_posx[1] - now->your_posx) + abs(now->ghost_posy[1] - now->your_posy) <= run_dist * 2 + 1 ||
         (now->opponent_status > 0 &&
          abs(now->opponent_posx - now->your_posx) + abs(now->opponent_posy - now->your_posy) <= run_dist * 2 + 1))
     {
+        // 进行一次逃跑尝试
         memset(ed, 0x3f3f3f3f, sizeof(ed));
         enemy_dist(now, ed);
         int maxd = -1, mini = -1;
@@ -299,7 +297,7 @@ static bool unsafe(Player *now) // 判断敌人是否接近
             Point pos;
             int step;
             int direction;
-            int mind;
+            int mind; // 记录该逃跑路线中与敌人最近的距离
         };
         std::queue<qNode> q;
         bool flag[MAXN][MAXN];
@@ -334,6 +332,7 @@ static bool unsafe(Player *now) // 判断敌人是否接近
                             run_y = now->your_posy + MOV[next.direction].Y;
                         }
                     }
+                    // 吃到超级星且强化状态有效也算逃跑成功
                     if (now->mat[next.pos.X][next.pos.Y] == 'O' && ed[next.pos.X][next.pos.Y] < 19)
                     {
                         run_x = now->your_posx + MOV[next.direction].X;
@@ -346,6 +345,7 @@ static bool unsafe(Player *now) // 判断敌人是否接近
             }
             q.pop();
         }
+        // 如果逃跑过程中与敌人最近距离<=2，则视为危险
         if (mind <= 2)
             return true;
     }
@@ -433,7 +433,7 @@ struct Point walk(struct Player *player) // 操作函数
         }
         else
         {
-            ret = {run_x, run_y};
+            ret = {run_x, run_y}; // 逃跑方向在unsafe中已经计算出来
         }
     }
     else
